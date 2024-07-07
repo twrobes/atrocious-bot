@@ -1,23 +1,35 @@
-import discord
+import asyncio
+import logging
+import os
 import time
+
+import discord
 
 from discord.ext import commands
 
 from env import bot_token
 
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+discord.utils.setup_logging(handler=handler, level=logging.DEBUG)
+
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix='!', intents=intents, application_id='1228562180409131009')
 
 
 @bot.event
 async def on_ready():
-    await bot.load_extension('commands')
     print(f'We have logged in as {bot.user}')
 
 
-@bot.listen()
+async def load():
+    for file in os.listdir('./cogs'):
+        if file.endswith('.py'):
+            await bot.load_extension(f'cogs.{file[:-3]}')
+
+
+@bot.event
 async def on_message(message):
     if message.author == bot.user:
         return
@@ -33,5 +45,12 @@ async def on_message(message):
     if 'bruh' in message.content.lower():
         await message.channel.send('bruh')
 
+    await bot.process_commands(message)
 
-bot.run(bot_token)
+
+async def main():
+    await load()
+    await bot.start(bot_token)
+
+
+asyncio.run(main())

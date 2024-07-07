@@ -2,7 +2,7 @@ from typing import Tuple
 
 import requests
 
-from env import wowaudit_token
+from src.env import wowaudit_token
 
 ''' json example
     {
@@ -32,7 +32,6 @@ async def post_wishlist(character_name: str, report_id: str) -> Tuple[bool, str]
 
     response = requests.post(url, json=wishlist_json, headers=wowaudit_auth_header)
     response_json = response.json()
-    error_msg = ''
 
     if response.ok:
         if response_json['created']:
