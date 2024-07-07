@@ -64,12 +64,15 @@ async def _character_list(ctx):
         return
 
     for item_idx, item in enumerate(character_list):
+        item_name = item['name']
+
         if item_idx % 4 == 3 and item_idx != len(character_list) - 1:
-            character_string += f'{item['name']},\n'
+
+            character_string += f'{item_name},\n'
         elif item_idx == len(character_list) - 1:
-            character_string += f'{item['name']}'
+            character_string += f'{item_name}'
         else:
-            character_string += f'{item['name']}, '
+            character_string += f'{item_name}, '
 
     character_string += '```'
 

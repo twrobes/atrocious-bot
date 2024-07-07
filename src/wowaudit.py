@@ -2,7 +2,7 @@ from typing import Tuple
 
 import requests
 
-from src import env
+from env import wowaudit_token
 
 ''' json example
     {
@@ -16,7 +16,7 @@ from src import env
 '''
 
 wowaudit_auth_header = {
-    'Authorization': env.wowaudit_token
+    'Authorization': wowaudit_token
 }
 
 
