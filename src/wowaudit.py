@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import requests
 
 from src import env
@@ -18,27 +20,38 @@ wowaudit_auth_header = {
 }
 
 
-async def post_wishlist(report_id: str, character_id: str) -> bool:
+async def post_wishlist(character_name: str, report_id: str) -> Tuple[bool, str]:
     url = 'https://wowaudit.com/v1/wishlists'
     wishlist_json = {
         'report_id': report_id,
-        'character_id': character_id,
+        'character_name': character_name,
         'configuration_name': 'Single Target',
         'replace_manual_edits': True,
         'clear_conduits': True
     }
 
     response = requests.post(url, json=wishlist_json, headers=wowaudit_auth_header)
+    response_json = response.json()
+    error_msg = ''
 
     if response.ok:
-        response_json = response.json()
-
         if response_json['created']:
-            return True
+            return True, ''
 
-        error_msg = response_json['error']
+        # The geniuses at wowaudit have a bug where some responses have 'error:' as the key which is what the
+        # documentation says, but they have 'error' on other types of responses, so try both and see which one works
+        try:
+            error_msg = response_json['error:']
+        except KeyError:
+            error_msg = response_json['error']
+
         print(f'ERROR - wowaudit failed to update player wishlist: {error_msg}')
-        return False
+        return False, error_msg
 
-    print(f'ERROR - wowaudit responded with a status code of {str(response.status_code)}')
-    return False
+    try:
+        error_msg = response_json['error:']
+    except KeyError:
+        error_msg = response_json['error']
+
+    print(f'ERROR - wowaudit responded with status code: {str(response.status_code)} and error: {error_msg}')
+    return False, error_msg
