@@ -4,7 +4,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from src.services.wowaudit_service import post_wishlist
+from services.wowaudit_service import post_wishlist
 
 # Constants
 wowaudit_json_path = 'resources/wowaudit_character_list.json'

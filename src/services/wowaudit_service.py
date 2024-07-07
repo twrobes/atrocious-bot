@@ -2,7 +2,7 @@ from typing import Tuple
 
 import requests
 
-from src.env import wowaudit_token
+from env import wowaudit_token
 
 ''' json example
     {
