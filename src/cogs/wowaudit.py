@@ -82,7 +82,6 @@ class Wowaudit(commands.Cog):
             item_name = item['name']
 
             if item_idx % 4 == 3 and item_idx != len(character_list) - 1:
-
                 character_string += f'{item_name},\n'
             elif item_idx == len(character_list) - 1:
                 character_string += f'{item_name}'
@@ -90,7 +89,6 @@ class Wowaudit(commands.Cog):
                 character_string += f'{item_name}, '
 
         character_string += '```'
-
         await interaction.response.send_message(character_string, ephemeral=True)
 
     @staticmethod

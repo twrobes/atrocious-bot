@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import random
 import time
 
 import discord
@@ -44,6 +45,15 @@ async def on_message(message):
 
     if 'bruh' in message.content.lower():
         await message.channel.send('bruh')
+
+    # Kona
+    if message.author.id == 123499257373261826:
+        if random.randrange(6) == 0:
+            await message.channel.send('Sure, says the owner of a Stanley tumbler... zzzzzzz')
+
+    if message.author.id == 130526977231683585:
+        if random.randrange(3) == 0:
+            await message.channel.send('stfu')
 
     await bot.process_commands(message)
 
