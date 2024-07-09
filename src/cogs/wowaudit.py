@@ -27,7 +27,6 @@ class Wowaudit(commands.Cog):
         name='update-wishlist',
         description='Updates a character wishlist in wowaudit',
     )
-    # @app_commands.guilds(discord.Object(id='238145730982838272'))
     async def update_wishlist(self, interaction: discord.Interaction, character_name: str, link: str):
         await interaction.response.send_message('Request received...')
 

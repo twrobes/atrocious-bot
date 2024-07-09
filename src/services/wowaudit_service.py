@@ -1,6 +1,6 @@
 from typing import Tuple
 
-import requests
+import aiohttp
 
 from env import wowaudit_token
 
@@ -30,8 +30,9 @@ async def post_wishlist(character_name: str, report_id: str) -> Tuple[bool, str]
         'clear_conduits': True
     }
 
-    response = requests.post(url, json=wishlist_json, headers=wowaudit_auth_header)
-    response_json = response.json()
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=wishlist_json, headers=wowaudit_auth_header) as response:
+            response_json = await response.json()
 
     if response.ok:
         if response_json['created']:
