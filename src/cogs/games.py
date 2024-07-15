@@ -9,6 +9,10 @@ class Games(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print('Games cog loaded.')
+
     @app_commands.command(
         name='deathroll',
         description='Start a deathroll with another user'

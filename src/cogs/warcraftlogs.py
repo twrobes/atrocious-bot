@@ -13,13 +13,6 @@ class Warcraftlogs(commands.Cog):
         print('Warcraftlogs cog loaded.')
 
     @app_commands.command(
-        name='prog',
-        description='Shows the current raid progress of the guild'
-    )
-    async def prog(self, interaction: discord.Interaction):
-        await interaction.response.send_message('placeholder')
-
-    @app_commands.command(
         name='rank',
         description='Shows the rank of the guild in the current raid tier'
     )
