@@ -1,5 +1,6 @@
 import functools
 import io
+import os
 import time
 
 import discord
@@ -36,23 +37,35 @@ class Raiderio(commands.Cog):
 
     @staticmethod
     def get_image_buffer():
-        chrome_service = Service(ChromeDriverManager().install())
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
 
+        if os.name == 'nt':
+            chrome_service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
+        else:
+            chrome_service = Service(executable_path='/usr/bin/chromedriver', options=chrome_options)
+            driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
+
         # Gets the image
-        driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
         driver.get(RAIDERIO_WIDGET_URL)
-        time.sleep(3)
+        time.sleep(5)
         png = driver.get_screenshot_as_png()
         driver.quit()
 
         # Crop image
         image = Image.open(BytesIO(png))
-        left = 0
-        top = 40
-        right = 625
-        bottom = 390
+
+        if os.name == 'nt':
+            left = 0
+            top = 40
+            right = 625
+            bottom = 390
+        else:
+            left = 0
+            top = 32
+            right = 501
+            bottom = 312
 
         prog_image = image.crop((left, top, right, bottom))
         buffer = io.BytesIO()
