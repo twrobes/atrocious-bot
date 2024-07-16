@@ -24,6 +24,13 @@ class Wowaudit(commands.Cog):
         await ctx.send(f'Synced {len(fmt)} commands.')
 
     @app_commands.command(
+        name='roster',
+        description='WIP. Displays the current roster for the week.'
+    )
+    async def roster(self, interaction: discord.Interaction):
+        await interaction.response.send_message(file=discord.File('resources/yam_roster.png'))
+
+    @app_commands.command(
         name='update-wishlist',
         description='Updates a character wishlist in wowaudit',
     )
@@ -60,7 +67,8 @@ class Wowaudit(commands.Cog):
             else:
                 await interaction.followup.send(
                     f'Something went wrong and your wishlist was not updated. Please check your report id and '
-                    f'character id are valid.\n\nWowaudit had an issue accepting the report: ```{error}```', ephemeral=True)
+                    f'character id are valid.\n\nWowaudit had an issue accepting the report: ```{error}```',
+                    ephemeral=True)
         else:
             await interaction.followup.send(
                 f'`{character_name}` was not found. Please try again with a different name or use the '

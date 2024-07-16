@@ -26,7 +26,10 @@ class Raiderio(commands.Cog):
     async def on_ready(self):
         print('Raiderio cog loaded.')
 
-    @app_commands.command()
+    @app_commands.command(
+        name='prog',
+        description='Shows the progress of the guild for the current raid tier.'
+    )
     async def prog(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
