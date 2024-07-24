@@ -2,7 +2,7 @@ from typing import Tuple
 
 import aiohttp
 
-from env import wowaudit_token
+from env import WOWAUDIT_TOKEN
 
 ''' json example
     {
@@ -16,7 +16,7 @@ from env import wowaudit_token
 '''
 
 wowaudit_auth_header = {
-    'Authorization': wowaudit_token
+    'Authorization': WOWAUDIT_TOKEN
 }
 
 
