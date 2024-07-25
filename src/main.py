@@ -9,6 +9,9 @@ from discord.ext import commands, tasks
 from env import BOT_TOKEN
 from services.wow_server_status import update_area_52_server_status
 
+UP = 'UP'
+DOWN = 'DOWN'
+
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
 discord.utils.setup_logging(handler=handler, level=logging.DEBUG)
 
@@ -47,9 +50,26 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-@tasks.loop(seconds=5)
+@tasks.loop(minutes=15)
 async def update_bot_status():
-    await update_area_52_server_status(bot)
+    server_status = await update_area_52_server_status()
+
+    if server_status == UP:
+        status_msg = 'Area-52 is online'
+    else:
+        status_msg = 'Area-52 is offline'
+
+    guild = bot.get_guild(699611111066042409)
+
+    if guild.me.activity is not None:
+        print(f'name: {guild.me.activity.name}')
+
+    if guild.me.activity is None:
+        activity = discord.CustomActivity(name=status_msg)
+        await bot.change_presence(activity=activity)
+    elif status_msg != guild.me.activity.name:
+        activity = discord.CustomActivity(name=status_msg)
+        await bot.change_presence(activity=activity)
 
 
 async def main():

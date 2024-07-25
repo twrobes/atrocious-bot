@@ -53,5 +53,5 @@ async def post_wishlist(character_name: str, report_id: str) -> Tuple[bool, str]
     except KeyError:
         error_msg = response_json['error']
 
-    print(f'ERROR - wowaudit responded with status code: {str(response.status_code)} and error: {error_msg}')
+    print(f'ERROR - wowaudit responded with status code: {str(response.status)} and error: {error_msg}')
     return False, error_msg
