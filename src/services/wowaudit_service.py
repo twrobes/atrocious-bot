@@ -2,7 +2,7 @@ from typing import Tuple
 
 import aiohttp
 
-from env import wowaudit_token
+from env import WOWAUDIT_TOKEN
 
 ''' json example
     {
@@ -16,7 +16,7 @@ from env import wowaudit_token
 '''
 
 wowaudit_auth_header = {
-    'Authorization': wowaudit_token
+    'Authorization': WOWAUDIT_TOKEN
 }
 
 
@@ -53,5 +53,5 @@ async def post_wishlist(character_name: str, report_id: str) -> Tuple[bool, str]
     except KeyError:
         error_msg = response_json['error']
 
-    print(f'ERROR - wowaudit responded with status code: {str(response.status_code)} and error: {error_msg}')
+    print(f'ERROR - wowaudit responded with status code: {str(response.status)} and error: {error_msg}')
     return False, error_msg
