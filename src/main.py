@@ -70,7 +70,11 @@ async def update_bot_status():
     elif status_msg != guild.me.activity.name:
         activity = discord.CustomActivity(name=status_msg)
         await bot.change_presence(activity=activity)
-        await channel_to_ping.send(f'<@&{raider_role_id}><@&{trial_role_id}> Area-52 is now {status_msg.split(' ')[2]}.')
+
+        trimmed_status_msg = status_msg.split(' ')[2]
+        await channel_to_ping.send(
+            f'<@&{raider_role_id}><@&{trial_role_id}> Area-52 is now {trimmed_status_msg}.'
+        )
 
 
 async def main():
