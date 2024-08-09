@@ -55,9 +55,11 @@ async def on_message(message):
 async def update_bot_status():
     server_status = await update_area_52_server_status()
     guild = bot.get_guild(699611111066042409)
-    channel_to_ping = bot.get_channel(ATROCIOUS_GENERAL_CHANNEL_ID)
-    raider_role_id = 699622512174301266
-    trial_role_id = 699667525964660826
+
+    # TODO: Bring back for opt-in roles
+    # channel_to_ping = bot.get_channel(ATROCIOUS_GENERAL_CHANNEL_ID)
+    # raider_role_id = 699622512174301266
+    # trial_role_id = 699667525964660826
 
     if server_status == UP:
         status_msg = 'Area-52 is online'
@@ -71,10 +73,11 @@ async def update_bot_status():
         activity = discord.CustomActivity(name=status_msg)
         await bot.change_presence(activity=activity)
 
-        trimmed_status_msg = status_msg.split(' ')[2]
-        await channel_to_ping.send(
-            f'<@&{raider_role_id}><@&{trial_role_id}> Area-52 is now {trimmed_status_msg}.'
-        )
+        # TODO: Create opt-in roles
+        # trimmed_status_msg = status_msg.split(' ')[2]
+        # await channel_to_ping.send(
+        #     f'<@&{raider_role_id}><@&{trial_role_id}> Area-52 is now {trimmed_status_msg}.'
+        # )
 
 
 async def main():
