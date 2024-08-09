@@ -5,13 +5,13 @@ from discord import app_commands
 from discord.ext import commands
 
 
-class Games(commands.Cog):
+class Deathroll(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print('Games cog loaded.')
+        print('Deathroll cog loaded.')
 
     @app_commands.command(
         name='deathroll',
@@ -73,7 +73,7 @@ class Roll(discord.ui.View):
 
 
 async def setup(bot):
-    await bot.add_cog(Games(bot), guilds=[
+    await bot.add_cog(Deathroll(bot), guilds=[
         discord.Object(id=238145730982838272),
         discord.Object(id=699611111066042409)
     ])
