@@ -57,8 +57,9 @@ class Gambling(commands.Cog):
         roll_button = await interaction.followup.send(view=game_session_view)
 
         game_time = 0
+        game_session_player_list = game_session_view['player_list']
         pending_rolls_msg = await interaction.followup.send(
-            content=f'Please roll!\n{await self.get_remaining_rolls_string(game_session_view['player_list'])}',
+            content=f'Please roll!\n{await self.get_remaining_rolls_string(game_session_player_list)}',
             wait=True
         )
 
@@ -70,8 +71,9 @@ class Gambling(commands.Cog):
                 await asyncio.sleep(wait_time)
 
                 if len(game_session_view['player_list']) > 0:
+                    game_session_player_list = game_session_view['player_list']
                     await pending_rolls_msg.edit(
-                        content=f'LAST CALL!\n{await self.get_remaining_rolls_string(game_session_view['player_list'])}'
+                        content=f'LAST CALL!\n{await self.get_remaining_rolls_string(game_session_player_list)}'
                     )
                 else:
                     break
@@ -84,8 +86,9 @@ class Gambling(commands.Cog):
                 await asyncio.sleep(wait_time)
 
                 if len(game_session_view['player_list']) > 0:
+                    game_session_player_list = game_session_view['player_list']
                     await pending_rolls_msg.edit(
-                        content=f'Please Roll!\n{await self.get_remaining_rolls_string(game_session_view['player_list'])}'
+                        content=f'Please Roll!\n{await self.get_remaining_rolls_string(game_session_player_list)}'
                                 f''
                     )
                 else:
