@@ -26,7 +26,7 @@ class Gambling(commands.Cog):
     async def gamble(self, interaction: discord.Interaction, roll_amount: int = 10000, join_time_limit: int = 60,
                      game_time_limit: int = 60):
         if roll_amount < 1000:
-            await interaction.response.send_message('Please enter an amount of at least 1000')
+            await interaction.response.send_message('Please enter an amount of at least 1000.')
             return
 
         await interaction.response.send_message(f'{interaction.user.display_name} has started a game of gambling!\n')
