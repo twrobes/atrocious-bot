@@ -56,8 +56,8 @@ async def update_bot_status():
     server_status = await update_area_52_server_status()
     guild = bot.get_guild(699611111066042409)
 
+    channel_to_msg = bot.get_channel(ATROCIOUS_GENERAL_CHANNEL_ID)
     # TODO: Bring back for opt-in roles
-    # channel_to_ping = bot.get_channel(ATROCIOUS_GENERAL_CHANNEL_ID)
     # raider_role_id = 699622512174301266
     # trial_role_id = 699667525964660826
 
@@ -78,6 +78,11 @@ async def update_bot_status():
         # await channel_to_ping.send(
         #     f'<@&{raider_role_id}><@&{trial_role_id}> Area-52 is now {trimmed_status_msg}.'
         # )
+
+        trimmed_status_msg = status_msg.split(' ')[2]
+        await channel_to_msg.send(
+            f'Area-52 is now {trimmed_status_msg}.'
+        )
 
 
 async def main():
