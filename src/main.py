@@ -88,7 +88,9 @@ async def update_bot_status():
 
 async def main():
     # DB Connection
-    conn = psycopg2.connect(f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require')
+    conn = psycopg2.connect(
+        f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require'
+    )
 
     query_sql = 'SELECT VERSION()'
 
