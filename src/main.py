@@ -3,10 +3,11 @@ import logging
 import os
 
 import discord
+import psycopg2
 
 from discord.ext import commands, tasks
 
-from env import BOT_TOKEN
+from env import BOT_TOKEN, POSTGRESQL_SECRET
 from services.wow_server_status import update_area_52_server_status
 
 ATROCIOUS_GENERAL_CHANNEL_ID = 699611111594393613
@@ -86,6 +87,17 @@ async def update_bot_status():
 
 
 async def main():
+    # DB Connection
+    conn = psycopg2.connect(f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require')
+
+    query_sql = 'SELECT VERSION()'
+
+    cur = conn.cursor()
+    cur.execute(query_sql)
+
+    version = cur.fetchone()[0]
+    print(version)
+
     await load()
     await bot.start(BOT_TOKEN)
 
