@@ -4,6 +4,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+ROLL_TIMEOUT = 10
+
 
 class Deathroll(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -35,7 +37,8 @@ class Deathroll(commands.Cog):
 
         while roll != 1:
             view = Roll(current_player)
-            await interaction.followup.send(f'It is your turn to roll {current_player.display_name}.', view=view)
+            view.message = await interaction.followup.send(f'It is your turn to roll {current_player.display_name}.',
+                                                           view=view)
             await view.wait()
 
             roll = random.randrange(1, roll + 1)
@@ -53,9 +56,12 @@ class Deathroll(commands.Cog):
 
 class Roll(discord.ui.View):
     def __init__(self, user: discord.Member):
-        super().__init__()
+        super().__init__(timeout=ROLL_TIMEOUT)
         self.value = None
         self.user = user
+
+    async def on_timeout(self) -> None:
+        await self.message.delete()
 
     async def interaction_check(self, interaction: discord.Interaction):
         if interaction.user.id == self.user.id:
