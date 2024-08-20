@@ -226,7 +226,6 @@ class Game(discord.ui.View):
 
             roll = random.randrange(0, self.roll_amount)
             self.rolls_dict.append({interaction.user: roll})
-            # self.roll_msg = ''
             self.roll_msg += '\n' + f'{interaction.user.display_name}'.ljust(self.left_adjust) + f' - {roll}'
             self.player_list.remove(interaction.user)
             self.rolled.append(interaction.user)

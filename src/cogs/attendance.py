@@ -1,0 +1,193 @@
+import logging
+from datetime import datetime
+import calendar
+
+import discord
+import psycopg2
+from discord import app_commands
+from discord.ext import commands
+
+from env import POSTGRESQL_SECRET
+
+USER_ID_COL = 0
+ABSENCE_DATE_COL = 1
+DATE_FORMAT = '%Y-%m-%d'
+
+
+class Attendance(commands.GroupCog, name='attendance'):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print('Attendance cog loaded.')
+
+    @app_commands.command(
+        name='add',
+        description='Add a date that you will be absent'
+    )
+    async def add_absence(self, interaction: discord.Interaction, month: int, day: int, year: int):
+        error_string = Attendance.validate_date(month, day, year)
+
+        if error_string:
+            await interaction.response.send_message(error_string, ephemeral=True)
+            return
+
+        standard_date = Attendance.get_standardized_date_string(month, day, year)
+        year_month_day = (standard_date.split('-')[0], standard_date.split('-')[1], standard_date.split('-')[2])
+
+        conn = psycopg2.connect(
+            f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require'
+        )
+
+        try:
+            with conn.cursor() as cursor:
+                get_record_query = """SELECT * FROM attendance WHERE user_id=%s AND absence_date=%s"""
+                cursor.execute(get_record_query, (interaction.user.id, standard_date))
+                attendance_records = cursor.fetchall()
+        except (Exception, psycopg2.Error) as e:
+            logging.error(e)
+            await interaction.response.send_message(
+                'Something went wrong while trying to retrieve data from the database. Please contact Foe for assistance.',
+                ephemeral=True)
+            conn.close()
+            return
+
+        if attendance_records:
+            await interaction.response.send_message('You already have an absence set for this day.', ephemeral=True)
+            conn.close()
+            return
+
+        try:
+            date_obj = datetime.strptime(standard_date, DATE_FORMAT)
+            with conn.cursor() as cursor:
+                insert_absence_query = """INSERT INTO attendance (user_id, absence_date) VALUES (%s, %s)"""
+                absence_record = (interaction.user.id, date_obj)
+                cursor.execute(insert_absence_query, absence_record)
+                conn.commit()
+                logging.info(f'Successfully inserted {cursor.rowcount} absence record into the attendance table')
+        except (Exception, psycopg2.Error) as e:
+            logging.error(e)
+            await interaction.response.send_message(
+                'Something went wrong while trying to add the absence to the database. Please contact Foe for assistance.',
+                ephemeral=True)
+            return
+        finally:
+            conn.close()
+
+        await interaction.response.send_message(
+            f'Successfully added absence for {interaction.user.display_name} '
+            f'on {year_month_day[1]}/{year_month_day[2]}/{year_month_day[0]}', ephemeral=True)
+
+        return
+
+    @app_commands.command(
+        name='remove',
+        description='Remove a date that you previously added as an absence'
+    )
+    async def remove_absence(self, interaction: discord.Interaction, month: int, day: int, year: int):
+        error_string = Attendance.validate_date(month, day, year)
+
+        if error_string:
+            await interaction.response.send_message(error_string, ephemeral=True)
+            return
+
+        standard_date = Attendance.get_standardized_date_string(month, day, year)
+        year_month_day = (standard_date.split('-')[0], standard_date.split('-')[1], standard_date.split('-')[2])
+
+        conn = psycopg2.connect(
+            f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require'
+        )
+
+        try:
+            with conn.cursor() as cursor:
+                get_record_query = """SELECT * FROM attendance WHERE user_id=%s AND absence_date=%s"""
+                cursor.execute(get_record_query, (interaction.user.id, standard_date))
+                attendance_records = cursor.fetchall()
+        except (Exception, psycopg2.Error) as e:
+            logging.error(e)
+            await interaction.response.send_message(
+                'Something went wrong while trying to retrieve data from the database. Please contact Foe for assistance.',
+                ephemeral=True)
+            conn.close()
+            return
+
+        if not attendance_records:
+            await interaction.response.send_message(
+                f'You have not added an absence on {year_month_day[1]}/{year_month_day[2]}/{year_month_day[0]}. '
+                f'Please input a date with an existing absence.', ephemeral=True)
+            conn.close()
+            return
+
+        try:
+            with conn.cursor() as cursor:
+                delete_query = """DELETE FROM attendance WHERE user_id=%s AND absence_date=%s"""
+                cursor.execute(delete_query, (interaction.user.id, standard_date))
+                conn.commit()
+                logging.info(f'Successfully deleted {cursor.rowcount} absence record from the attendance table')
+        except (Exception, psycopg2.Error) as e:
+            logging.error(e)
+            await interaction.response.send_message(
+                'Something went wrong while trying to delete the absence from the database. Please contact Foe for assistance.',
+                ephemeral=True)
+            return
+        finally:
+            conn.close()
+
+        await interaction.response.send_message(
+            f'Successfully removed absence for {interaction.user.display_name} '
+            f'on {year_month_day[1]}/{year_month_day[2]}/{year_month_day[0]}', ephemeral=True)
+
+        return
+
+    @staticmethod
+    def validate_date(month: int, day: int, year: int):
+        if year < datetime.now().year:
+            return f'{year} occurred in the past. Please input a current or future date.'
+        elif year > datetime.now().year + 2:
+            return f'{year} is too far in the future, please input the current year or next year.'
+
+        if month < 1 or month > 12:
+            return 'Month must be between 1-12.'
+        elif year == datetime.now().year and month < datetime.now().month:
+            return f'{month}/{day}/{year} occurred in the past. Please input a current or future date.'
+
+        if day < 1 or day > 31:
+            return 'Day must be between 1-31'
+        elif datetime.now().month == 2 and (year % 4 == 0) and day > 29:
+            return f'Day must not exceed 29 for February. {year} is a leap year.'
+        elif datetime.now().month == 2 and (year % 4 > 0) and day > 28:
+            return f'Day must not exceed 28 for February. {year} is not a leap year.'
+        elif year == datetime.now().year and month == datetime.now().month and day < datetime.now().day:
+            return f'{month}/{day}/{year} occurred in the past. Please input a current or future date.'
+
+        match month:
+            case 4, 6, 9, 11:
+                if day > 30:
+                    month_name = calendar.month_name[month]
+                    return f'Day must not exceed 30 for {month_name}.'
+
+        return ''
+
+    @staticmethod
+    def get_standardized_date_string(month: int, day: int, year: int):
+        if day < 10:
+            day_str = f'0{day}'
+        else:
+            day_str = f'{day}'
+
+        if month < 10:
+            month_str = f'0{month}'
+        else:
+            month_str = f'{month}'
+
+        year_str = f'{year}'
+
+        return f'{year_str}-{month_str}-{day_str}'
+
+
+async def setup(bot):
+    await bot.add_cog(Attendance(bot), guilds=[
+        discord.Object(id=238145730982838272),
+        discord.Object(id=699611111066042409)
+    ])
