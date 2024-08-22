@@ -1,10 +1,11 @@
 import json
+import logging
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
-from services.wowaudit_service import post_wishlist
+from services.wowaudit_service import post_wishlist, get_character_list
 
 # Constants
 wowaudit_json_path = 'resources/wowaudit_character_list.json'
@@ -42,13 +43,12 @@ class Wowaudit(commands.Cog):
         else:  # QE Live
             report_id = link[-12:]
 
-        print(report_id)
-        character_list = self.get_character_list_dict()
+        is_populated, character_list = await get_character_list()
 
-        if character_list is None or len(character_list) == 0:
+        if not is_populated:
             await interaction.followup.send(
                 'An internal error has occurred. Please DM Foe a screenshot of the command and this response. '
-                'The character_list was None or empty.')
+                'The character_list was None or empty.', ephemeral=True)
             return
 
         name_found = False
@@ -65,21 +65,23 @@ class Wowaudit(commands.Cog):
             if is_success:
                 await interaction.followup.send('Wishlist updated successfully!', ephemeral=True)
             else:
+                logging.error(f"Attempt to update {character_name}'s wishlist was not successful using link: {link}, "
+                              f"error: {error}")
                 await interaction.followup.send(
-                    f'Something went wrong and your wishlist was not updated. Please check your report id and '
+                    f'Something went wrong and your wishlist was not updated. Please check your report link and '
                     f'character id are valid.\n\nWowaudit had an issue accepting the report: ```{error}```',
                     ephemeral=True)
         else:
             await interaction.followup.send(
                 f'`{character_name}` was not found. Please try again with a different name or use the '
-                f'`!character_list` command to see a list of valid character names.', ephemeral=True)
+                f'`/character_list` command to see a list of valid character names.', ephemeral=True)
 
     @app_commands.command(name='character-list', description='Get the list of valid characters from wowaudit')
     async def _character_list(self, interaction: discord.Interaction):
         character_string = '```'
-        character_list = self.get_character_list_dict()
+        is_populated, character_list = await get_character_list()
 
-        if character_list is None:
+        if not is_populated:
             await interaction.response.send_message(
                 'Could not retrieve character list. Please DM Foe a screenshot of the command and this response.',
                 ephemeral=True
@@ -98,18 +100,6 @@ class Wowaudit(commands.Cog):
 
         character_string += '```'
         await interaction.response.send_message(character_string, ephemeral=True)
-
-    @staticmethod
-    def get_character_list_dict():
-        try:
-            file = open(wowaudit_json_path)
-            character_dict = json.load(file)
-            file.close()
-
-            return character_dict
-        except FileNotFoundError as fnf:
-            print(f'ERROR - Character JSON file not found: {fnf}')
-            return None
 
 
 async def setup(bot):

@@ -1,3 +1,4 @@
+import logging
 from typing import Tuple
 
 import aiohttp
@@ -55,3 +56,27 @@ async def post_wishlist(character_name: str, report_id: str) -> Tuple[bool, str]
 
     print(f'ERROR - wowaudit responded with status code: {str(response.status)} and error: {error_msg}')
     return False, error_msg
+
+
+async def get_character_list() -> Tuple[bool, list]:
+    url = 'https://wowaudit.com/v1/characters'
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=wowaudit_auth_header) as response:
+            response_json = await response.json()
+
+    if response.ok:
+        if len(response_json) == 0:
+            logging.error(f'The character list was empty: {response_json}')
+            return False, []
+        elif len(response_json) == 1:
+            if len(response_json[0]) < 0:
+                logging.error(f'The character list had one dict and it was empty: {response_json}')
+                return False, []
+            else:
+                return True, response_json
+        else:
+            return True, response_json
+    else:
+        logging.error(f'Response returned a bad status code: {response.status}')
+        return False, []
