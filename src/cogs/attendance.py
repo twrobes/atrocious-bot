@@ -230,7 +230,6 @@ class Attendance(commands.GroupCog, name='attendance'):
         return
 
     async def get_user_date_list(self, records: list):
-        display_name_padding = await Attendance.get_ljust_dict(self, records)
         user_date_list = {
             'January': [],
             'February': [],
@@ -252,92 +251,68 @@ class Attendance(commands.GroupCog, name='attendance'):
             match absence_date.month:
                 case 1:
                     user_date_list['January'].append(
-                        f'{display_name}' + ('᲼' * (display_name_padding['January'] - len(display_name))) +
+                        f'{display_name}' +
                         f' - {absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
                     )
                 case 2:
                     user_date_list['February'].append(
-                        f'{display_name}' + ('᲼' * (display_name_padding['February'] - len(display_name))) +
+                        f'{display_name}' +
                         f' - {absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
                     )
                 case 3:
                     user_date_list['March'].append(
-                        f'{display_name}' + ('᲼' * (display_name_padding['March'] - len(display_name))) +
+                        f'{display_name}' +
                         f' - {absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
                     )
                 case 4:
                     user_date_list['April'].append(
-                        f'{display_name}' + ('᲼' * (display_name_padding['April'] - len(display_name))) +
+                        f'{display_name}' +
                         f' - {absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
                     )
                 case 5:
                     user_date_list['May'].append(
-                        f'{display_name}' + ('᲼' * (display_name_padding['May'] - len(display_name))) +
+                        f'{display_name}' +
                         f' - {absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
                     )
                 case 6:
                     user_date_list['June'].append(
-                        f'{display_name}' + ('᲼' * (display_name_padding['June'] - len(display_name))) +
+                        f'{display_name}' +
                         f' - {absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
                     )
                 case 7:
                     user_date_list['July'].append(
-                        f'{display_name}' + ('᲼' * (display_name_padding['July'] - len(display_name))) +
+                        f'{display_name}' +
                         f' - {absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
                     )
                 case 8:
                     user_date_list['August'].append(
-                        f'{display_name}' + ('᲼' * (display_name_padding['August'] - len(display_name))) +
+                        f'{display_name}' +
                         f' - {absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
                     )
                 case 9:
                     user_date_list['September'].append(
-                        f'{display_name}' + ('᲼' * (display_name_padding['September'] - len(display_name))) +
+                        f'{display_name}' +
                         f' - {absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
                     )
                 case 10:
                     user_date_list['October'].append(
-                        f'{display_name}' + ('᲼' * (display_name_padding['October'] - len(display_name))) +
+                        f'{display_name}' +
                         f' - {absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
                     )
                 case 11:
                     user_date_list['November'].append(
-                        f'{display_name}' + ('᲼' * (display_name_padding['November'] - len(display_name))) +
+                        f'{display_name}' +
                         f' - {absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
                     )
                 case 12:
                     user_date_list['December'].append(
-                        f'{display_name}' + ('᲼' * (display_name_padding['December'] - len(display_name))) +
+                        f'{display_name}' +
                         f' - {absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
                     )
                 case _:
                     logging.error(f'Month was not a valid date in class {self.__class__} in function update')
 
         return user_date_list
-
-    async def get_ljust_dict(self, records):
-        ljust_dict = {
-            'January': 0,
-            'February': 0,
-            'March': 0,
-            'April': 0,
-            'May': 0,
-            'June': 0,
-            'July': 0,
-            'August': 0,
-            'September': 0,
-            'October': 0,
-            'November': 0,
-            'December': 0,
-        }
-
-        for user_id, date in records:
-            display_name = (await self.bot.fetch_user(user_id)).display_name
-
-            if ljust_dict[date.strftime("%B")] < len(display_name):
-                ljust_dict[date.strftime("%B")] = len(display_name)
-
-        return ljust_dict
 
     @staticmethod
     def get_day_suffix(day: int):
