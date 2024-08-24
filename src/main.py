@@ -7,7 +7,7 @@ import psycopg2
 
 from discord.ext import commands, tasks
 
-from env import BOT_TOKEN, POSTGRESQL_SECRET
+from env import BOT_TOKEN, POSTGRESQL_SECRET, ATROCIOUS_ATTENDANCE_CHANNEL_ID
 from services.wow_server_status import update_area_52_server_status
 
 ATROCIOUS_GENERAL_CHANNEL_ID = 699611111594393613
@@ -48,6 +48,9 @@ async def on_message(message):
 
     if 'bruh' in message.content.lower():
         await message.channel.send('bruh')
+
+    if message.channel.id == ATROCIOUS_ATTENDANCE_CHANNEL_ID:
+        await message.delete()
 
     await bot.process_commands(message)
 

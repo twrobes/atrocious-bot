@@ -64,6 +64,7 @@ class Wowaudit(commands.Cog):
         if name_found:
             if is_success:
                 await interaction.followup.send('Wishlist updated successfully!', ephemeral=True)
+                await interaction.followup.send('Request processed successfully.')
             else:
                 logging.error(f"Attempt to update {character_name}'s wishlist was not successful using link: {link}, "
                               f"error: {error}")
