@@ -1,15 +1,15 @@
 import logging
 from datetime import datetime
 import calendar
+from typing import Tuple
 
 import discord
 import psycopg2
 from discord import app_commands
 from discord.ext import commands
 
-from env import POSTGRESQL_SECRET
+from env import POSTGRESQL_SECRET, ATROCIOUS_ATTENDANCE_CHANNEL_ID
 
-ATROCIOUS_ATTENDANCE_CHANNEL_ID = 1270447537454715001
 ABSENCE_DATE_COL = 1
 USER_ID_COL = 0
 DATE_FORMAT = '%Y-%m-%d'
@@ -81,6 +81,12 @@ class Attendance(commands.GroupCog, name='attendance'):
             f'Successfully added absence for {interaction.user.display_name} '
             f'on {year_month_day[1]}/{year_month_day[2]}/{year_month_day[0]}', ephemeral=True)
 
+        attendance_channel = self.bot.get_channel(ATROCIOUS_ATTENDANCE_CHANNEL_ID)
+        messages = [message async for message in attendance_channel.history()]
+
+        await attendance_channel.delete_messages(messages)
+        await Attendance.update_embed(self, interaction)
+
         return
 
     @app_commands.command(
@@ -141,6 +147,12 @@ class Attendance(commands.GroupCog, name='attendance'):
             f'Successfully removed absence for {interaction.user.display_name} '
             f'on {year_month_day[1]}/{year_month_day[2]}/{year_month_day[0]}', ephemeral=True)
 
+        attendance_channel = self.bot.get_channel(ATROCIOUS_ATTENDANCE_CHANNEL_ID)
+        messages = [message async for message in attendance_channel.history()]
+
+        await attendance_channel.delete_messages(messages)
+        await Attendance.update_embed(self, interaction)
+
         return
 
     @staticmethod
@@ -189,7 +201,6 @@ class Attendance(commands.GroupCog, name='attendance'):
 
         return f'{year_str}-{month_str}-{day_str}'
 
-    @app_commands.command(name='test')
     async def update_embed(self, interaction: discord.Interaction):
         conn = psycopg2.connect(
             f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require'
@@ -206,12 +217,20 @@ class Attendance(commands.GroupCog, name='attendance'):
         finally:
             conn.close()
 
+        if not records:
+            logging.info('There are no absences, so not updating the embed')
+
         attendance_channel = self.bot.get_channel(ATROCIOUS_ATTENDANCE_CHANNEL_ID)
         sticky_msg = discord.Embed(
             color=discord.Color.dark_embed(),
             title='Absences'
         )
-        user_date_list = await Attendance.get_user_date_list(self, records)
+        is_empty, user_date_list = await Attendance.get_user_date_list(self, records)
+
+        if is_empty:
+            sticky_msg.add_field(name='*There are no upcoming absences*', value='')
+            await attendance_channel.send(embed=sticky_msg)
+            return
 
         for month, absence_list in user_date_list.items():
             if not absence_list:
@@ -225,11 +244,9 @@ class Attendance(commands.GroupCog, name='attendance'):
             sticky_msg.add_field(name=f'__{month}__', value=value)
 
         await attendance_channel.send(embed=sticky_msg)
-        await interaction.response.send_message('Done.')
-
         return
 
-    async def get_user_date_list(self, records: list):
+    async def get_user_date_list(self, records: list) -> Tuple[bool, dict]:
         user_date_list = {
             'January': [],
             'February': [],
@@ -244,6 +261,9 @@ class Attendance(commands.GroupCog, name='attendance'):
             'November': [],
             'December': [],
         }
+
+        if len(records) == 0:
+            return True, {}
 
         for user_id, absence_date in records:
             display_name = (await self.bot.fetch_user(user_id)).display_name
@@ -312,7 +332,7 @@ class Attendance(commands.GroupCog, name='attendance'):
                 case _:
                     logging.error(f'Month was not a valid date in class {self.__class__} in function update')
 
-        return user_date_list
+        return False, user_date_list
 
     @staticmethod
     def get_day_suffix(day: int):
