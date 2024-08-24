@@ -266,6 +266,13 @@ class Attendance(commands.GroupCog, name='attendance'):
             return True, {}
 
         for user_id, absence_date in records:
+            standard_date = Attendance.get_standardized_date_string(
+                absence_date.month, absence_date.day, absence_date.year
+            )
+
+            if datetime.strptime(standard_date, DATE_FORMAT) < datetime.now():
+                continue
+
             display_name = (await self.bot.fetch_user(user_id)).display_name
 
             match absence_date.month:
