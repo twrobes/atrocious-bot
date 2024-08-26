@@ -194,15 +194,23 @@ class Attendance(commands.GroupCog, name='attendance'):
         description='Add a date range when you will not be attending raid (ex: start=4/20/2024, end=6/9/2024)'
     )
     async def add_vacation(self, interaction: discord.Interaction, start: str, end: str):
+        error_string = Attendance.validate_dates_are_chronological(start, end)
+
+        if error_string:
+            await interaction.response.send_message(error_string, ephemeral=True)
+            return
+
         error_string = Attendance.validate_date_input(start)
 
         if error_string:
             await interaction.response.send_message(error_string, ephemeral=True)
+            return
 
         error_string = Attendance.validate_date_input(end)
 
         if error_string:
             await interaction.response.send_message(error_string, ephemeral=True)
+            return
 
         start_date = datetime.strptime(start, USER_INPUT_DATE_FORMAT)
         end_date = datetime.strptime(end, USER_INPUT_DATE_FORMAT)
@@ -239,20 +247,29 @@ class Attendance(commands.GroupCog, name='attendance'):
             return
 
         for record in vacation_records:
-            if record[START_DATE_COL] <= start_date <= record[END_DATE_COL]:
-                await interaction.response.send_message(
-                    'Your start date cannot be within the range of an existing absence.', ephemeral=True)
+            record_start_date = datetime(record[START_DATE_COL].year, record[START_DATE_COL].month,
+                                         record[START_DATE_COL].day)
+            record_end_date = datetime(record[END_DATE_COL].year, record[END_DATE_COL].month, record[END_DATE_COL].day)
+
+            if record_start_date == start_date and record_end_date == end_date:
+                await interaction.response.send_message('You have already set a vacation for this date range.',
+                                                        ephemeral=True)
                 return
 
-            if record[START_DATE_COL] <= end_date <= record[END_DATE_COL]:
+            if record_start_date <= start_date <= record_end_date:
                 await interaction.response.send_message(
-                    'Your end date cannot be within the range of an existing absence.', ephemeral=True)
+                    'Your start date cannot be within the range of an existing vacation.', ephemeral=True)
                 return
 
-            if (start_date <= record[START_DATE_COL] <= end_date) or (start_date <= record[END_DATE_COL] <= end_date):
+            if record_start_date <= end_date <= record_end_date:
                 await interaction.response.send_message(
-                    'You cannot create an absence range that intersects an existing '
-                    'absence.', ephemeral=True)
+                    'Your end date cannot be within the range of an existing vacation.', ephemeral=True)
+                return
+
+            if (start_date <= record_start_date <= end_date) or (start_date <= record_end_date <= end_date):
+                await interaction.response.send_message(
+                    'You cannot create a vacation range that intersects an existing '
+                    'vacation.', ephemeral=True)
                 return
 
         try:
@@ -272,22 +289,40 @@ class Attendance(commands.GroupCog, name='attendance'):
             conn.close()
 
         await interaction.response.send_message(
-            f'Successfully added vacation between the dates of {start_date} - {end_date}', ephemeral=True)
+            f'Successfully added vacation for {interaction.user.display_name} '
+            f'from {start_date.month}/{start_date.day}/{start_date.year} '
+            f'to {end_date.month}/{end_date.day}/{end_date.year}.', ephemeral=True)
+
+        attendance_channel = self.bot.get_channel(ATROCIOUS_ATTENDANCE_CHANNEL_ID)
+        messages = [message async for message in attendance_channel.history()]
+
+        await attendance_channel.delete_messages(messages)
+        await Attendance.update_embed(self, interaction)
+
+        return
 
     @app_commands.command(
         name='remove_vacation',
         description='Remove a date range when you will not be attending raid (ex: start=4/20/2024, end=6/9/2024)'
     )
     async def remove_vacation(self, interaction: discord.Interaction, start: str, end: str):
+        error_string = Attendance.validate_dates_are_chronological(start, end)
+
+        if error_string:
+            await interaction.response.send_message(error_string, ephemeral=True)
+            return
+
         error_string = Attendance.validate_date_input(start)
 
         if error_string:
             await interaction.response.send_message(error_string, ephemeral=True)
+            return
 
         error_string = Attendance.validate_date_input(end)
 
         if error_string:
             await interaction.response.send_message(error_string, ephemeral=True)
+            return
 
         start_date = datetime.strptime(start, USER_INPUT_DATE_FORMAT)
         end_date = datetime.strptime(end, USER_INPUT_DATE_FORMAT)
@@ -358,6 +393,8 @@ class Attendance(commands.GroupCog, name='attendance'):
         await attendance_channel.delete_messages(messages)
         await Attendance.update_embed(self, interaction)
 
+        return
+
     @staticmethod
     def validate_date_input(date):
         if '/' not in date:
@@ -381,7 +418,7 @@ class Attendance(commands.GroupCog, name='attendance'):
             return 'You must enter a number between 1 and 12 for the day.'
 
         try:
-            if int(date_parts[0]) < datetime.now().year or int(date_parts[0]) > datetime.now().year + 1:
+            if int(date_parts[2]) < datetime.now().year or int(date_parts[2]) > datetime.now().year + 1:
                 return f'You must enter a number between {datetime.now().year} and {datetime.now().year + 1} for the year.'
         except ValueError:
             return f'You must enter a number between {datetime.now().year} and {datetime.now().year + 1} for the year.'
@@ -389,12 +426,23 @@ class Attendance(commands.GroupCog, name='attendance'):
         return ''
 
     @staticmethod
+    def validate_dates_are_chronological(start_date, end_date):
+        start_date_obj = datetime(int(start_date.split('/')[2]), int(start_date.split('/')[0]),
+                                  int(start_date.split('/')[1]))
+        end_date_obj = datetime(int(end_date.split('/')[2]), int(end_date.split('/')[0]), int(end_date.split('/')[1]))
+
+        if start_date_obj == end_date_obj:
+            return 'You must enter two different dates for the start date and the end date.'
+
+        if start_date_obj > end_date_obj:
+            return 'The start date must occur before the end date.'
+
+    @staticmethod
     def validate_date(month: int, day: int, year):
-        # Bring back if command adds back 'year' as an input parameter
-        # if year < datetime.now().year:
-        #     return f'{year} occurred in the past. Please input a current or future date.'
-        # elif year > datetime.now().year:
-        #     return f'{year} is too far in the future, please input the current year.'
+        if year < datetime.now().year:
+            return f'{year} occurred in the past. Please input a current or future date.'
+        elif year > datetime.now().year + 1:
+            return f'{year} is too far in the future, please input the current year or next year.'
 
         if month < 1 or month > 12:
             return 'Month must be between 1-12.'
@@ -411,7 +459,7 @@ class Attendance(commands.GroupCog, name='attendance'):
             return f'{month}/{day}/{year} occurred in the past. Please input a current or future date.'
 
         match month:
-            case 4, 6, 9, 11:
+            case 4 | 6 | 9 | 11:
                 if day > 30:
                     month_name = calendar.month_name[month]
                     return f'Day must not exceed 30 for {month_name}.'
@@ -473,12 +521,20 @@ class Attendance(commands.GroupCog, name='attendance'):
             if not absence_list:
                 continue
 
-            value = ''
+            absence_msg = ''
 
             for absence in absence_list:
-                value += f'{absence}\n'
+                absence_msg += f'{absence}\n'
 
-            sticky_msg.add_field(name=f'__{month}__', value=value)
+            sticky_msg.add_field(name=f'__{month}__', value=absence_msg)
+
+        if vacation_dates_list:
+            vacation_msg = ''
+
+            for vacation in vacation_dates_list:
+                vacation_msg += vacation + '\n'
+
+            sticky_msg.add_field(name='__Vacations__', value=vacation_msg)
 
         await attendance_channel.send(embed=sticky_msg)
         return
@@ -581,7 +637,7 @@ class Attendance(commands.GroupCog, name='attendance'):
 
         for user_id, start_date, end_date in vacation_records:
             display_name = (await self.bot.fetch_user(user_id)).display_name
-            vacation_date_list.append(f'{display_name}: {start_date.month}/{start_date.day}/{start_date.year} to '
+            vacation_date_list.append(f'{display_name}: {start_date.month}/{start_date.day}/{start_date.year} - '
                                       f'{end_date.month}/{end_date.day}/{end_date.year}')
 
         return attendance_is_empty, absence_date_dict, vacation_date_list
