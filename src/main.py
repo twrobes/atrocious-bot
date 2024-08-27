@@ -55,7 +55,7 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-@tasks.loop(minutes=5)
+@tasks.loop(minutes=1)
 async def update_bot_status():
     server_status = await update_area_52_server_status()
     guild = bot.get_guild(699611111066042409)
