@@ -6,3 +6,4 @@ selenium>=4.22.0
 urllib3>=2.2.2
 webdriver-manager>=4.0.1
 websocket-client>=1.8.0
+pandas>=2.2.2

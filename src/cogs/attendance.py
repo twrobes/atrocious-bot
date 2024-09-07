@@ -4,6 +4,7 @@ import calendar
 from typing import Tuple
 
 import discord
+import pandas as pd
 import psycopg2
 from discord import app_commands
 from discord.ext import commands
@@ -99,12 +100,7 @@ class Attendance(commands.GroupCog, name='attendance'):
             f'Successfully added absence for {(await self.bot.fetch_user(user_id)).display_name} '
             f'on {year_month_day[1]}/{year_month_day[2]}/{year_month_day[0]}', ephemeral=True)
 
-        attendance_channel = self.bot.get_channel(ATROCIOUS_ATTENDANCE_CHANNEL_ID)
-        messages = [message async for message in attendance_channel.history()]
-
-        await attendance_channel.delete_messages(messages)
-        await Attendance.update_embed(self, interaction)
-
+        await Attendance.update_absences_table(self)
         return
 
     @app_commands.command(
@@ -181,12 +177,7 @@ class Attendance(commands.GroupCog, name='attendance'):
             f'Successfully removed absence for {(await self.bot.fetch_user(user_id)).display_name} '
             f'on {year_month_day[1]}/{year_month_day[2]}/{year_month_day[0]}', ephemeral=True)
 
-        attendance_channel = self.bot.get_channel(ATROCIOUS_ATTENDANCE_CHANNEL_ID)
-        messages = [message async for message in attendance_channel.history()]
-
-        await attendance_channel.delete_messages(messages)
-        await Attendance.update_embed(self, interaction)
-
+        await Attendance.update_absences_table(self)
         return
 
     @app_commands.command(
@@ -293,12 +284,7 @@ class Attendance(commands.GroupCog, name='attendance'):
             f'from {start_date.month}/{start_date.day}/{start_date.year} '
             f'to {end_date.month}/{end_date.day}/{end_date.year}.', ephemeral=True)
 
-        attendance_channel = self.bot.get_channel(ATROCIOUS_ATTENDANCE_CHANNEL_ID)
-        messages = [message async for message in attendance_channel.history()]
-
-        await attendance_channel.delete_messages(messages)
-        await Attendance.update_embed(self, interaction)
-
+        await Attendance.update_absences_table(self)
         return
 
     @app_commands.command(
@@ -387,12 +373,7 @@ class Attendance(commands.GroupCog, name='attendance'):
             f'from {start_date.month}/{start_date.day}/{start_date.year} '
             f'to {end_date.month}/{end_date.day}/{end_date.year}.', ephemeral=True)
 
-        attendance_channel = self.bot.get_channel(ATROCIOUS_ATTENDANCE_CHANNEL_ID)
-        messages = [message async for message in attendance_channel.history()]
-
-        await attendance_channel.delete_messages(messages)
-        await Attendance.update_embed(self, interaction)
-
+        await Attendance.update_absences_table(self)
         return
 
     @staticmethod
@@ -482,7 +463,7 @@ class Attendance(commands.GroupCog, name='attendance'):
 
         return f'{year_str}-{month_str}-{day_str}'
 
-    async def update_embed(self, interaction: discord.Interaction):
+    async def update_absences_table(self):
         conn = psycopg2.connect(
             f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require'
         )
@@ -495,13 +476,11 @@ class Attendance(commands.GroupCog, name='attendance'):
                 vacation_records = cursor.fetchall()
         except (Exception, psycopg2.Error):
             logging.error("Could not fetch all records from the attendance table")
-            await interaction.followup.send('An error occurred when trying to update the attendance message, please'
-                                            'let Foe know about this error', ephemeral=True)
         finally:
             conn.close()
 
         if not attendance_records:
-            logging.info('There are no absences, so not updating the embed')
+            logging.info('There are no absences, so not updating the message')
 
         attendance_channel = self.bot.get_channel(ATROCIOUS_ATTENDANCE_CHANNEL_ID)
         sticky_msg = discord.Embed(
@@ -517,27 +496,115 @@ class Attendance(commands.GroupCog, name='attendance'):
             await attendance_channel.send(embed=sticky_msg)
             return
 
-        for month, absence_list in attendance_dates_dict.items():
-            if not absence_list:
+        table_data = Attendance.get_absence_dict(attendance_dates_dict, vacation_dates_list)
+        df = pd.DataFrame(data=table_data)
+        df.set_index('', inplace=True)
+        df.index.name = None
+
+        await Attendance.delete_bot_messages(self, attendance_channel)
+        await attendance_channel.send(f'```{df}```')
+
+        return
+
+    @staticmethod
+    def get_absence_dict(absence_dict, vacation_list):
+        table_dict = {
+            '': [],
+            'Name': [],
+            'Day': [],
+            'Date': []
+        }
+
+        longest_name = 0
+        longest_date = 0
+        longest_month = 0
+        longest_day = 3
+
+        for month, absences_list in absence_dict.items():
+            if len(absences_list) == 0:
                 continue
 
-            absence_msg = ''
+            month_is_added = False
 
-            for absence in absence_list:
-                absence_msg += f'{absence}\n'
+            for absence in absences_list:
+                if longest_name < len(absence['Name']):
+                    longest_name = len(absence['Name'])
 
-            sticky_msg.add_field(name=f'__{month}__', value=absence_msg)
+                if longest_date < len(absence['Date']):
+                    longest_date = len(absence['Date'])
 
-        if vacation_dates_list:
-            vacation_msg = ''
+                if longest_day < len(absence['Day']):
+                    longest_day = len(absence['Day'])
 
-            for vacation in vacation_dates_list:
-                vacation_msg += vacation + '\n'
+                if not month_is_added:
+                    # Add month header
+                    table_dict[''].append(month)
+                    table_dict['Name'].append('')
+                    table_dict['Day'].append('')
+                    table_dict['Date'].append('')
 
-            sticky_msg.add_field(name='__Vacations__', value=vacation_msg)
+                    table_dict[''].append('')
+                    table_dict['Name'].append(absence['Name'])
+                    table_dict['Day'].append(absence['Day'])
+                    table_dict['Date'].append(absence['Date'])
 
-        await attendance_channel.send(embed=sticky_msg)
-        return
+                    if longest_month < len(month):
+                        longest_month = len(month)
+
+                    month_is_added = True
+                else:
+                    table_dict[''].append('')
+                    table_dict['Name'].append(absence['Name'])
+                    table_dict['Day'].append(absence['Day'])
+                    table_dict['Date'].append(absence['Date'])
+
+        if not len(vacation_list) > 0:
+            # Add row to separate headers and data
+            table_dict[''].insert(0, '-' * longest_month)
+            table_dict['Name'].insert(0, '-' * longest_name)
+            table_dict['Day'].insert(0, '-' * longest_day)
+            table_dict['Date'].insert(0, '-' * longest_date)
+        else:
+            longest_month = 9
+
+            for vacation in vacation_list:
+                if longest_name < len(vacation['Name']):
+                    longest_name = len(vacation['Name'])
+
+                if longest_day < len(vacation['Day']):
+                    longest_day = len(vacation['Day'])
+
+                if longest_date < len(vacation['Date']):
+                    longest_date = len(vacation['Date'])
+
+            # Add row to separate headers and data
+            table_dict[''].insert(0, '-' * longest_month)
+            table_dict['Name'].insert(0, '-' * longest_name)
+            table_dict['Day'].insert(0, '-' * longest_day)
+            table_dict['Date'].insert(0, '-' * longest_date)
+
+            # Add a row between absences and vacations
+            table_dict[''].append('-' * longest_month)
+            table_dict['Name'].append('-' * longest_name)
+            table_dict['Day'].append('-' * longest_day)
+            table_dict['Date'].append('-' * longest_date)
+
+            # Add vacation header
+            table_dict[''].append('Vacations')
+            table_dict['Name'].append('')
+            table_dict['Day'].append('')
+            table_dict['Date'].append('')
+
+            for vacation in vacation_list:
+                if len(vacation_list) == 0:
+                    break
+
+                table_dict[''].append('')
+                table_dict['Name'].append(vacation['Name'])
+                table_dict['Day'].append(vacation['Day'])
+                table_dict['Date'].append(vacation['Date'])
+
+        return table_dict
 
     async def get_user_date_list(self, attendance_records: list, vacation_records: list) -> Tuple[bool, dict, list]:
         absence_date_dict = {
@@ -557,9 +624,10 @@ class Attendance(commands.GroupCog, name='attendance'):
 
         vacation_date_list = []
         attendance_is_empty = False
+        guild = self.bot.get_guild(699611111066042409)
 
         if len(attendance_records) == 0 and len(vacation_records) == 0:
-            attendance_is_empty = True
+            return True, {}, []
 
         for user_id, absence_date in attendance_records:
             standard_date = Attendance.get_standardized_date_string(
@@ -569,78 +637,34 @@ class Attendance(commands.GroupCog, name='attendance'):
             if datetime.strptime(standard_date, DATE_FORMAT) < datetime.now():
                 continue
 
-            display_name = (await self.bot.fetch_user(user_id)).display_name
-
-            match absence_date.month:
-                case 1:
-                    absence_date_dict['January'].append(
-                        f'{display_name}: ' +
-                        f'{absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
-                    )
-                case 2:
-                    absence_date_dict['February'].append(
-                        f'{display_name}: ' +
-                        f'{absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
-                    )
-                case 3:
-                    absence_date_dict['March'].append(
-                        f'{display_name}: ' +
-                        f'{absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
-                    )
-                case 4:
-                    absence_date_dict['April'].append(
-                        f'{display_name}: ' +
-                        f'{absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
-                    )
-                case 5:
-                    absence_date_dict['May'].append(
-                        f'{display_name}: ' +
-                        f'{absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
-                    )
-                case 6:
-                    absence_date_dict['June'].append(
-                        f'{display_name}: ' +
-                        f'{absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
-                    )
-                case 7:
-                    absence_date_dict['July'].append(
-                        f'{display_name}: ' +
-                        f'{absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
-                    )
-                case 8:
-                    absence_date_dict['August'].append(
-                        f'{display_name}: ' +
-                        f'{absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
-                    )
-                case 9:
-                    absence_date_dict['September'].append(
-                        f'{display_name}: ' +
-                        f'{absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
-                    )
-                case 10:
-                    absence_date_dict['October'].append(
-                        f'{display_name}: ' +
-                        f'{absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
-                    )
-                case 11:
-                    absence_date_dict['November'].append(
-                        f'{display_name}: ' +
-                        f'{absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
-                    )
-                case 12:
-                    absence_date_dict['December'].append(
-                        f'{display_name}: ' +
-                        f'{absence_date.strftime("%a")}, {absence_date.day}{Attendance.get_day_suffix(absence_date.day)}'
-                    )
-                case _:
-                    logging.error(f'Month was not a valid date in class {self.__class__} in function update')
+            display_name = (await guild.fetch_member(user_id)).display_name
+            absence_date_dict[absence_date.strftime('%B')].append(
+                {
+                    'Name': display_name,
+                    'Day': absence_date.strftime('%a'),
+                    'Date': f'{absence_date.month}/{absence_date.day}/{absence_date.year}'
+                }
+            )
 
         for user_id, start_date, end_date in vacation_records:
-            display_name = (await self.bot.fetch_user(user_id)).display_name
-            vacation_date_list.append(f'{display_name}: {start_date.month}/{start_date.day}/{start_date.year} - '
-                                      f'{end_date.month}/{end_date.day}/{end_date.year}')
+            display_name = (await guild.fetch_member(user_id)).display_name
+            vacation_date_list.append(
+                {
+                    'Name': display_name,
+                    'Day': 'N/A',
+                    'Date': f'{start_date.month}/{start_date.day}/{start_date.year} - '
+                            f'{end_date.month}/{end_date.day}/{end_date.year}'
+                }
+            )
 
         return attendance_is_empty, absence_date_dict, vacation_date_list
+
+    async def delete_bot_messages(self, channel):
+        messages = [message async for message in channel.history(limit=50)]
+
+        for message in messages:
+            if message.author.id == self.bot.user.id:
+                await message.delete()
 
     @staticmethod
     def get_day_suffix(day: int):

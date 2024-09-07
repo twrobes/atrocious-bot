@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 import os
 
@@ -7,10 +8,11 @@ import psycopg2
 
 from discord.ext import commands, tasks
 
-from env import BOT_TOKEN, POSTGRESQL_SECRET, ATROCIOUS_ATTENDANCE_CHANNEL_ID
+from cogs.attendance import Attendance
+from env import BOT_TOKEN, POSTGRESQL_SECRET, ATROCIOUS_ATTENDANCE_CHANNEL_ID, ATROCIOUS_GENERAL_CHANNEL_ID
 from services.wow_server_status import update_area_52_server_status
 
-ATROCIOUS_GENERAL_CHANNEL_ID = 699611111594393613
+DATE_FORMAT = '%Y-%m-%d'
 DOWN = 'DOWN'
 UP = 'UP'
 
@@ -27,6 +29,8 @@ bot = commands.Bot(command_prefix='!', intents=intents, application_id='12285621
 async def on_ready():
     print(f'We have logged in as {bot.user}')
     update_bot_status.start()
+    check_and_update_bot_attendance_msg.start()
+    remove_past_absences.start()
 
 
 async def load():
@@ -40,17 +44,11 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if 'hello' in message.content.lower():
-        await message.channel.send('Hello!')
-
     if 'o7' in message.content.lower():
         await message.channel.send('o7')
 
     if 'bruh' in message.content.lower():
         await message.channel.send('bruh')
-
-    if message.channel.id == ATROCIOUS_ATTENDANCE_CHANNEL_ID:
-        await message.delete()
 
     await bot.process_commands(message)
 
@@ -87,6 +85,35 @@ async def update_bot_status():
         await channel_to_msg.send(
             f'Area-52 is now {trimmed_status_msg}.'
         )
+
+
+@tasks.loop(minutes=60)
+async def check_and_update_bot_attendance_msg():
+    attendance_channel = bot.get_channel(ATROCIOUS_ATTENDANCE_CHANNEL_ID)
+    messages = [message async for message in attendance_channel.history(limit=1)]
+    message = messages[0]
+
+    if message.author.id != bot.user.id:
+        attendance = Attendance(bot)
+        await attendance.update_absences_table()
+
+
+@tasks.loop(hours=24)
+async def remove_past_absences():
+    conn = psycopg2.connect(
+        f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require'
+    )
+    current_date = datetime.datetime.now().strftime(DATE_FORMAT)
+
+    try:
+        with conn.cursor() as cursor:
+            delete_record_query = """DELETE FROM attendance WHERE absence_date < %s"""
+            cursor.execute(delete_record_query, (current_date,))
+            conn.commit()
+            logging.info('Removed past absence records successfully')
+    except (Exception, psycopg2.Error) as e:
+        logging.error(e)
+        conn.close()
 
 
 async def main():
