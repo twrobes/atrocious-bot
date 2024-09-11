@@ -68,7 +68,7 @@ class Raiderio(commands.Cog):
         else:
             left = 0
             top = 32
-            right = 501
+            right = 499
             bottom = 312
 
         prog_image = image.crop((left, top, right, bottom))
