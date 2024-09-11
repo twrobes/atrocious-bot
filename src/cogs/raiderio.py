@@ -1,3 +1,4 @@
+import asyncio
 import functools
 import io
 import os
@@ -13,9 +14,9 @@ from webdriver_manager.chrome import ChromeDriverManager
 from PIL import Image
 from io import BytesIO
 
-RAIDERIO_WIDGET_URL = ('https://raider.io/widgets/boss-progress?raid=latest&name_style=logo&difficulty=latest&region=us'
-                       '&realm=area-52&guild=Atrocious&boss=latest&period=until_kill&orientation=rect'
-                       '&hide=&chromargb=transparent&theme=dragonflight')
+RAIDERIO_WIDGET_URL = ('https://raider.io/widgets/boss-progress?raid=latest&name_style=logo&difficulty=latest&'
+                       'region=us&realm=area-52&guild=Atrocious&boss=latest&period=until_kill&orientation=rect&'
+                       'hide=&chromargb=transparent&theme=dragonflight')
 
 
 class Raiderio(commands.Cog):
@@ -32,19 +33,19 @@ class Raiderio(commands.Cog):
     )
     async def prog(self, interaction: discord.Interaction):
         await interaction.response.defer()
-
-        buffer_partial = functools.partial(self.get_image_buffer)
-        buffer = await self.bot.loop.run_in_executor(None, buffer_partial)
-
+        buffer = await self.get_image_buffer()
         await interaction.followup.send(file=discord.File(fp=buffer, filename='prog_image.png'))
 
     @staticmethod
-    def get_image_buffer():
+    async def get_image_buffer():
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
 
         if os.name == 'nt':
-            chrome_service = Service(ChromeDriverManager().install())
+            chrome_install = ChromeDriverManager().install()
+            folder = os.path.dirname(chrome_install)
+            chromedriver_path = os.path.join(folder, "chromedriver.exe")
+            chrome_service = Service(chromedriver_path)
             driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
         else:
             chrome_service = Service(executable_path='/usr/bin/chromedriver', options=chrome_options)
@@ -52,7 +53,7 @@ class Raiderio(commands.Cog):
 
         # Gets the image
         driver.get(RAIDERIO_WIDGET_URL)
-        time.sleep(5)
+        await asyncio.sleep(5)
         png = driver.get_screenshot_as_png()
         driver.quit()
 
