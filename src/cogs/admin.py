@@ -18,8 +18,6 @@ class Admin(commands.GroupCog, name='admin'):
         description='Sends a message to a specified guild channel'
     )
     async def send_server_message(self, interaction: discord.Interaction, channel_id: str, message: str):
-        print(channel_id)
-
         if interaction.user.id != ADMIN_USER_ID:
             await interaction.response.send_message('You are not allowed to use this command', ephemeral=True)
             return
