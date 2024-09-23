@@ -1,3 +1,5 @@
+import logging
+
 import aiohttp
 import discord
 from discord import app_commands
@@ -31,25 +33,17 @@ class Warcraftlogs(commands.Cog):
 
         if response.ok and rank_json is not None:
             await interaction.response.send_message(
-                f'__Awakened Vault of the Incarnates__\n'
-                f'```World  - {rank_json["raid_rankings"]["awakened-vault-of-the-incarnates"]["mythic"]["world"]}\n'
-                f'Region - {rank_json["raid_rankings"]["awakened-vault-of-the-incarnates"]["mythic"]["region"]}\n'
-                f'Realm  - {rank_json["raid_rankings"]["awakened-vault-of-the-incarnates"]["mythic"]["realm"]}```\n'
-
-                f'__Awakened Aberrus, the Shadowed Crucible__\n'
-                f'```World  - {rank_json["raid_rankings"]["awakened-aberrus-the-shadowed-crucible"]["mythic"]["world"]}\n'
-                f'Region - {rank_json["raid_rankings"]["awakened-aberrus-the-shadowed-crucible"]["mythic"]["region"]}\n'
-                f'Realm  - {rank_json["raid_rankings"]["awakened-aberrus-the-shadowed-crucible"]["mythic"]["realm"]}```\n'
-
-                f'__Awakened Amirdrassil, the Dream\'s Hope__\n'
-                f'```World  - {rank_json["raid_rankings"]["awakened-amirdrassil-the-dreams-hope"]["mythic"]["world"]}\n'
-                f'Region - {rank_json["raid_rankings"]["awakened-amirdrassil-the-dreams-hope"]["mythic"]["region"]}\n'
-                f'Realm  - {rank_json["raid_rankings"]["awakened-amirdrassil-the-dreams-hope"]["mythic"]["realm"]}```'
+                f'__Nerub-ar Palace__\n'
+                f'```World  - {rank_json["raid_rankings"]["nerubar-palace"]["mythic"]["world"]}\n'
+                f'Region - {rank_json["raid_rankings"]["nerubar-palace"]["mythic"]["region"]}\n'
+                f'Realm  - {rank_json["raid_rankings"]["nerubar-palace"]["mythic"]["realm"]}```\n'
             )
         else:
-            await interaction.response.send_message(
-                'An error has occurred. Please DM Foe a screenshot of the command and this response.'
-            )
+            if rank_json is None:
+                logging.error('Error occurred when retrieving rank data: rank_json was None')
+            else:
+                logging.error(f'Error occurred when retrieving rank data: response was not ok: {response.status}')
+            await interaction.response.send_message('An error has occurred. Please DM Foe a screenshot of the command and this response.')
 
 
 async def setup(bot):
