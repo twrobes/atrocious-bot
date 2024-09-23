@@ -4,7 +4,7 @@ import logging
 import os
 
 import discord
-import psycopg2
+import asyncpg
 
 from discord.ext import commands, tasks
 
@@ -100,35 +100,29 @@ async def check_and_update_bot_attendance_msg():
 
 @tasks.loop(hours=24)
 async def remove_past_absences():
-    conn = psycopg2.connect(
+    conn = await asyncpg.connect(
         f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require'
     )
-    current_date = datetime.datetime.now().strftime(DATE_FORMAT)
+    current_date = datetime.datetime.now()
 
     try:
-        with conn.cursor() as cursor:
-            delete_record_query = """DELETE FROM attendance WHERE absence_date < %s"""
-            cursor.execute(delete_record_query, (current_date,))
-            conn.commit()
-            logging.info('Removed past absence records successfully')
-    except (Exception, psycopg2.Error) as e:
+        delete_record_query = """DELETE FROM attendance WHERE absence_date < ($1)"""
+        await conn.execute(delete_record_query, current_date)
+        logging.info('Removed past absence records successfully')
+    except (Exception, asyncpg.PostgresError) as e:
         logging.error(e)
-        conn.close()
+        await conn.close()
 
 
 async def main():
     # DB Connection
-    conn = psycopg2.connect(
+    conn = await asyncpg.connect(
         f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require'
     )
 
     query_sql = 'SELECT VERSION()'
-
-    cur = conn.cursor()
-    cur.execute(query_sql)
-
-    version = cur.fetchone()[0]
-    print(version)
+    version = await conn.fetch(query_sql)
+    print(version[0]['version'])
 
     await load()
     await bot.start(BOT_TOKEN)

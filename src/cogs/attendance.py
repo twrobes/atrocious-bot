@@ -5,7 +5,7 @@ from typing import Tuple
 
 import discord
 import pandas as pd
-import psycopg2
+import asyncpg
 from discord import app_commands
 from discord.ext import commands
 
@@ -41,8 +41,7 @@ class Attendance(commands.GroupCog, name='attendance'):
                     is_officer = True
 
             if not is_officer:
-                await interaction.response.send_message('You are not allowed to add an absence for another user. Please'
-                                                        ' leave the optional "user" argument blank', ephemeral=True)
+                await interaction.response.send_message('You are not allowed to add an absence for another user. Please leave the optional "user" argument blank', ephemeral=True)
                 return
             else:
                 user_id = user.id
@@ -55,45 +54,32 @@ class Attendance(commands.GroupCog, name='attendance'):
             return
 
         standard_date = Attendance.get_standardized_date_string(month, day, year)
-
-        conn = psycopg2.connect(
-            f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require'
-        )
+        date_obj = datetime.strptime(standard_date, DATE_FORMAT)
+        conn = await asyncpg.connect(f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require')
 
         try:
-            with conn.cursor() as cursor:
-                get_record_query = """SELECT * FROM attendance WHERE user_id=%s AND absence_date=%s"""
-                cursor.execute(get_record_query, (user_id, standard_date))
-                attendance_records = cursor.fetchall()
-        except (Exception, psycopg2.Error) as e:
+            get_record_query = """SELECT * FROM attendance WHERE user_id=($1) AND absence_date=($2)"""
+            attendance_records = await conn.fetch(get_record_query, user_id, date_obj)
+        except (Exception, asyncpg.PostgresError) as e:
             logging.error(e)
-            await interaction.response.send_message(
-                'Something went wrong while trying to retrieve data from the database. Please contact Foe for assistance.',
-                ephemeral=True)
-            conn.close()
+            await interaction.response.send_message('Something went wrong while trying to retrieve data from the database. Please contact Foe for assistance.', ephemeral=True)
+            await conn.close()
             return
 
         if attendance_records:
             await interaction.response.send_message('You already have an absence set for this day.', ephemeral=True)
-            conn.close()
+            await conn.close()
             return
 
         try:
-            date_obj = datetime.strptime(standard_date, DATE_FORMAT)
-            with conn.cursor() as cursor:
-                insert_absence_query = """INSERT INTO attendance (user_id, absence_date) VALUES (%s, %s)"""
-                absence_record = (user_id, date_obj)
-                cursor.execute(insert_absence_query, absence_record)
-                conn.commit()
-                logging.info(f'Successfully inserted {cursor.rowcount} absence record into the attendance table')
-        except (Exception, psycopg2.Error) as e:
+            insert_absence_query = """INSERT INTO attendance (user_id, absence_date) VALUES ($1, $2)"""
+            await conn.execute(insert_absence_query, user_id, date_obj)
+        except (Exception, asyncpg.PostgresError) as e:
             logging.error(e)
-            await interaction.response.send_message(
-                'Something went wrong while trying to add the absence to the database. Please contact Foe for assistance.',
-                ephemeral=True)
+            await interaction.response.send_message('Something went wrong while trying to add the absence to the database. Please contact Foe for assistance.', ephemeral=True)
             return
         finally:
-            conn.close()
+            await conn.close()
 
         year_month_day = (standard_date.split('-')[0], standard_date.split('-')[1], standard_date.split('-')[2])
         await interaction.response.send_message(
@@ -117,9 +103,8 @@ class Attendance(commands.GroupCog, name='attendance'):
                     is_officer = True
 
             if not is_officer:
-                await interaction.response.send_message(
-                    'You are not allowed to remove an absence for another user. Please'
-                    ' leave the optional "user" argument blank', ephemeral=True)
+                await interaction.response.send_message('You are not allowed to remove an absence for another user. Please leave the optional "user" argument blank',
+                                                        ephemeral=True)
                 return
             else:
                 user_id = user.id
@@ -132,46 +117,35 @@ class Attendance(commands.GroupCog, name='attendance'):
             return
 
         standard_date = Attendance.get_standardized_date_string(month, day, year)
+        date_obj = datetime.strptime(standard_date, DATE_FORMAT)
         year_month_day = (standard_date.split('-')[0], standard_date.split('-')[1], standard_date.split('-')[2])
-
-        conn = psycopg2.connect(
-            f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require'
-        )
+        conn = await asyncpg.connect(f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require')
 
         try:
-            with conn.cursor() as cursor:
-                get_record_query = """SELECT * FROM attendance WHERE user_id=%s AND absence_date=%s"""
-                cursor.execute(get_record_query, (user_id, standard_date))
-                attendance_records = cursor.fetchall()
-        except (Exception, psycopg2.Error) as e:
+            get_record_query = """SELECT * FROM attendance WHERE user_id=($1) AND absence_date=($2)"""
+            attendance_records = await conn.fetch(get_record_query, user_id, date_obj)
+        except (Exception, asyncpg.PostgresError) as e:
             logging.error(e)
-            await interaction.response.send_message(
-                'Something went wrong while trying to retrieve data from the database. Please contact Foe for assistance.',
-                ephemeral=True)
-            conn.close()
+            await interaction.response.send_message('Something went wrong while trying to retrieve data from the database. Please contact Foe for assistance.', ephemeral=True)
+            await conn.close()
             return
 
         if not attendance_records:
             await interaction.response.send_message(
                 f'You have not added an absence on {year_month_day[1]}/{year_month_day[2]}/{year_month_day[0]}. '
                 f'Please input a date with an existing absence.', ephemeral=True)
-            conn.close()
+            await conn.close()
             return
 
         try:
-            with conn.cursor() as cursor:
-                delete_query = """DELETE FROM attendance WHERE user_id=%s AND absence_date=%s"""
-                cursor.execute(delete_query, (user_id, standard_date))
-                conn.commit()
-                logging.info(f'Successfully deleted {cursor.rowcount} absence record from the attendance table')
-        except (Exception, psycopg2.Error) as e:
+            delete_query = """DELETE FROM attendance WHERE user_id=$1 AND absence_date=$2"""
+            await conn.execute(delete_query, user_id, date_obj)
+        except (Exception, asyncpg.PostgresError) as e:
             logging.error(e)
-            await interaction.response.send_message(
-                'Something went wrong while trying to delete the absence from the database. Please contact Foe for assistance.',
-                ephemeral=True)
+            await interaction.response.send_message('Something went wrong while trying to delete the absence from the database. Please contact Foe for assistance.', ephemeral=True)
             return
         finally:
-            conn.close()
+            await conn.close()
 
         await interaction.response.send_message(
             f'Successfully removed absence for {(await self.bot.fetch_user(user_id)).display_name} '
@@ -221,63 +195,45 @@ class Attendance(commands.GroupCog, name='attendance'):
             await interaction.response.send_message(f'end is an invalid date: {end_error_string}', ephemeral=True)
             return
 
-        conn = psycopg2.connect(
-            f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require'
-        )
+        conn = await asyncpg.connect(f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require')
 
         try:
-            with conn.cursor() as cursor:
-                cursor.execute("""SELECT * FROM vacation WHERE user_id=%s""", (interaction.user.id,))
-                vacation_records = cursor.fetchall()
-        except (Exception, psycopg2.Error) as e:
+            vacation_records = await conn.fetch("""SELECT * FROM vacation WHERE user_id=$1""", interaction.user.id)
+        except (Exception, asyncpg.PostgresError) as e:
             logging.error(e)
-            await interaction.response.send_message(
-                'Something went wrong while trying to retrieve data from the database. Please contact Foe for assistance.',
-                ephemeral=True)
-            conn.close()
+            await interaction.response.send_message('Something went wrong while trying to retrieve data from the database. Please contact Foe for assistance.', ephemeral=True)
+            await conn.close()
             return
 
         for record in vacation_records:
-            record_start_date = datetime(record[START_DATE_COL].year, record[START_DATE_COL].month,
-                                         record[START_DATE_COL].day)
+            record_start_date = datetime(record[START_DATE_COL].year, record[START_DATE_COL].month, record[START_DATE_COL].day)
             record_end_date = datetime(record[END_DATE_COL].year, record[END_DATE_COL].month, record[END_DATE_COL].day)
 
             if record_start_date == start_date and record_end_date == end_date:
-                await interaction.response.send_message('You have already set a vacation for this date range.',
-                                                        ephemeral=True)
+                await interaction.response.send_message('You have already set a vacation for this date range.', ephemeral=True)
                 return
 
             if record_start_date <= start_date <= record_end_date:
-                await interaction.response.send_message(
-                    'Your start date cannot be within the range of an existing vacation.', ephemeral=True)
+                await interaction.response.send_message('Your start date cannot be within the range of an existing vacation.', ephemeral=True)
                 return
 
             if record_start_date <= end_date <= record_end_date:
-                await interaction.response.send_message(
-                    'Your end date cannot be within the range of an existing vacation.', ephemeral=True)
+                await interaction.response.send_message('Your end date cannot be within the range of an existing vacation.', ephemeral=True)
                 return
 
             if (start_date <= record_start_date <= end_date) or (start_date <= record_end_date <= end_date):
-                await interaction.response.send_message(
-                    'You cannot create a vacation range that intersects an existing '
-                    'vacation.', ephemeral=True)
+                await interaction.response.send_message('You cannot create a vacation range that intersects an existing vacation.', ephemeral=True)
                 return
 
         try:
-            with conn.cursor() as cursor:
-                insert_absence_query = """INSERT INTO vacation (user_id, start_date, end_date) VALUES (%s, %s, %s)"""
-                vacation_record = (interaction.user.id, start_date, end_date)
-                cursor.execute(insert_absence_query, vacation_record)
-                conn.commit()
-                logging.info(f'Successfully inserted {cursor.rowcount} vacation record into the attendance table')
-        except (Exception, psycopg2.Error) as e:
+            insert_absence_query = """INSERT INTO vacation (user_id, start_date, end_date) VALUES ($1, $2, $3)"""
+            await conn.execute(insert_absence_query, interaction.user.id, start_date, end_date)
+        except (Exception, asyncpg.PostgresError) as e:
             logging.error(e)
-            await interaction.response.send_message(
-                'Something went wrong while trying to add the vacation to the database. Please contact Foe for assistance.',
-                ephemeral=True)
+            await interaction.response.send_message('Something went wrong while trying to add the vacation to the database. Please contact Foe for assistance.', ephemeral=True)
             return
         finally:
-            conn.close()
+            await conn.close()
 
         await interaction.response.send_message(
             f'Successfully added vacation for {interaction.user.display_name} '
@@ -317,9 +273,7 @@ class Attendance(commands.GroupCog, name='attendance'):
         end_error_string = Attendance.validate_date(end_date.month, end_date.day, end_date.year)
 
         if start_error_string and end_error_string:
-            await interaction.response.send_message(
-                f'start and end both are invalid dates: '
-                f'start - {start_error_string}, end - {end_error_string}', ephemeral=True)
+            await interaction.response.send_message(f'start and end both are invalid dates: start - {start_error_string}, end - {end_error_string}', ephemeral=True)
             return
         if start_error_string:
             await interaction.response.send_message(f'start is an invalid date: {start_error_string}', ephemeral=True)
@@ -328,21 +282,15 @@ class Attendance(commands.GroupCog, name='attendance'):
             await interaction.response.send_message(f'end is an invalid date: {end_error_string}', ephemeral=True)
             return
 
-        conn = psycopg2.connect(
-            f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require'
-        )
+        conn = await asyncpg.connect(f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require')
 
         try:
-            with conn.cursor() as cursor:
-                get_record_query = """SELECT * FROM vacation WHERE user_id=%s AND start_date=%s and end_date=%s"""
-                cursor.execute(get_record_query, (interaction.user.id, start_date, end_date))
-                attendance_records = cursor.fetchall()
-        except (Exception, psycopg2.Error) as e:
+            get_record_query = """SELECT * FROM vacation WHERE user_id=$1 AND start_date=$2 and end_date=$3"""
+            attendance_records = await conn.fetch(get_record_query, interaction.user.id, start_date, end_date)
+        except (Exception, asyncpg.PostgresError) as e:
             logging.error(e)
-            await interaction.response.send_message(
-                'Something went wrong while trying to retrieve data from the database. Please contact Foe for assistance.',
-                ephemeral=True)
-            conn.close()
+            await interaction.response.send_message('Something went wrong while trying to retrieve data from the database. Please contact Foe for assistance.', ephemeral=True)
+            await conn.close()
             return
 
         if not attendance_records:
@@ -350,23 +298,19 @@ class Attendance(commands.GroupCog, name='attendance'):
                 f'You have not added a vacation from {start_date.month}/{start_date.day}/{start_date.year} to '
                 f'{end_date.month}/{end_date.day}/{end_date.year}.'
                 f'Please input a date with an existing absence.', ephemeral=True)
-            conn.close()
+            await conn.close()
             return
 
         try:
-            with conn.cursor() as cursor:
-                delete_query = """DELETE FROM vacation WHERE user_id=%s AND start_date=%s AND end_date=%s"""
-                cursor.execute(delete_query, (interaction.user.id, start_date, end_date))
-                conn.commit()
-                logging.info(f'Successfully deleted {cursor.rowcount} vacation record from the attendance table')
-        except (Exception, psycopg2.Error) as e:
+            delete_query = """DELETE FROM vacation WHERE user_id=$1 AND start_date=$2 AND end_date=$3"""
+            await conn.execute(delete_query, interaction.user.id, start_date, end_date)
+        except (Exception, asyncpg.PostgresError) as e:
             logging.error(e)
-            await interaction.response.send_message(
-                'Something went wrong while trying to delete the vacation from the database. Please contact Foe for assistance.',
-                ephemeral=True)
+            await interaction.response.send_message('Something went wrong while trying to delete the vacation from the database. Please contact Foe for assistance.',
+                                                    ephemeral=True)
             return
         finally:
-            conn.close()
+            await conn.close()
 
         await interaction.response.send_message(
             f'Successfully removed vacation for {interaction.user.display_name} '
@@ -408,8 +352,7 @@ class Attendance(commands.GroupCog, name='attendance'):
 
     @staticmethod
     def validate_dates_are_chronological(start_date, end_date):
-        start_date_obj = datetime(int(start_date.split('/')[2]), int(start_date.split('/')[0]),
-                                  int(start_date.split('/')[1]))
+        start_date_obj = datetime(int(start_date.split('/')[2]), int(start_date.split('/')[0]), int(start_date.split('/')[1]))
         end_date_obj = datetime(int(end_date.split('/')[2]), int(end_date.split('/')[0]), int(end_date.split('/')[1]))
 
         if start_date_obj == end_date_obj:
@@ -464,20 +407,16 @@ class Attendance(commands.GroupCog, name='attendance'):
         return f'{year_str}-{month_str}-{day_str}'
 
     async def update_absences_table(self):
-        conn = psycopg2.connect(
-            f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require'
-        )
+        conn = await asyncpg.connect(f'postgres://avnadmin:{POSTGRESQL_SECRET}@atrocious-bot-db-atrocious-bot.l.aivencloud.com:12047/defaultdb?sslmode=require')
 
         try:
-            with (conn.cursor() as cursor):
-                cursor.execute("""SELECT * FROM attendance ORDER BY absence_date ASC""")
-                attendance_records = cursor.fetchall()
-                cursor.execute("""SELECT * FROM vacation ORDER BY start_date ASC""")
-                vacation_records = cursor.fetchall()
-        except (Exception, psycopg2.Error):
-            logging.error("Could not fetch all records from the attendance table")
+            attendance_records = await conn.fetch("""SELECT * FROM attendance ORDER BY absence_date ASC""")
+            vacation_records = await conn.fetch("""SELECT * FROM vacation ORDER BY start_date ASC""")
+        except (Exception, asyncpg.PostgresError):
+            logging.error("Could not fetch all records from the attendance table and/or vacations table")
+            return
         finally:
-            conn.close()
+            await conn.close()
 
         if not attendance_records:
             logging.info('There are no absences, so not updating the message')
@@ -493,6 +432,7 @@ class Attendance(commands.GroupCog, name='attendance'):
 
         if is_empty:
             sticky_msg.add_field(name='*There are no upcoming absences*', value='')
+            await Attendance.delete_bot_messages(self, attendance_channel)
             await attendance_channel.send(embed=sticky_msg)
             return
 

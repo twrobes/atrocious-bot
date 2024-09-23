@@ -36,7 +36,7 @@ class Wowaudit(commands.Cog):
         description='Updates a character wishlist in wowaudit',
     )
     async def update_wishlist(self, interaction: discord.Interaction, character_name: str, link: str):
-        await interaction.response.send_message('Request received...')
+        await interaction.response.send_message('Request received...', ephemeral=True)
 
         if link.find('raidbots') != -1:  # Raidbots
             report_id = link[-22:]
@@ -64,7 +64,6 @@ class Wowaudit(commands.Cog):
         if name_found:
             if is_success:
                 await interaction.followup.send('Wishlist updated successfully!', ephemeral=True)
-                await interaction.followup.send('Request processed successfully.')
             else:
                 logging.error(f"Attempt to update {character_name}'s wishlist was not successful using link: {link}, "
                               f"error: {error}")
