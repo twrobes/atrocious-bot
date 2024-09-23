@@ -29,7 +29,7 @@ class Attendance(commands.GroupCog, name='attendance'):
 
     @app_commands.command(
         name='add',
-        description='Add a date that you will be absent'
+        description='Add a date that you will be absent. Ex: month=4 day=20'
     )
     async def add_absence(self, interaction: discord.Interaction, month: int, day: int, user: discord.Member = None):
         is_officer = False
@@ -91,7 +91,7 @@ class Attendance(commands.GroupCog, name='attendance'):
 
     @app_commands.command(
         name='remove',
-        description='Remove a date that you previously added as an absence'
+        description='Remove a date that you previously added as an absence. Ex: month=6 day=9'
     )
     async def remove_absence(self, interaction: discord.Interaction, month: int, day: int, user: discord.Member = None):
         is_officer = False
@@ -156,7 +156,7 @@ class Attendance(commands.GroupCog, name='attendance'):
 
     @app_commands.command(
         name='add_vacation',
-        description='Add a date range when you will not be attending raid (ex: start=4/20/2024, end=6/9/2024)'
+        description='Add a date range when you will not be attending raid. Ex: start=4/20/2024, end=6/9/2024'
     )
     async def add_vacation(self, interaction: discord.Interaction, start: str, end: str):
         error_string = Attendance.validate_dates_are_chronological(start, end)
@@ -245,7 +245,7 @@ class Attendance(commands.GroupCog, name='attendance'):
 
     @app_commands.command(
         name='remove_vacation',
-        description='Remove a date range when you will not be attending raid (ex: start=4/20/2024, end=6/9/2024)'
+        description='Remove a date range when you will not be attending raid (ex: start=1/3/2024, end=3/7/2024)'
     )
     async def remove_vacation(self, interaction: discord.Interaction, start: str, end: str):
         error_string = Attendance.validate_dates_are_chronological(start, end)
