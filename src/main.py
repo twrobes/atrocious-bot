@@ -67,13 +67,14 @@ async def update_bot_status():
     else:
         status_msg = 'Area-52 is offline'
 
-    is_online = await get_area_52_server_status_via_webpage()
-
-    if is_online != 0:
-        if is_online:
-            status_msg = 'Area-52 is online'
-        else:
-            status_msg = 'Area-52 is offline'
+    # TODO: Look into this when the server is offline
+    # is_online = await get_area_52_server_status_via_webpage()
+    #
+    # if is_online != 0:
+    #     if is_online:
+    #         status_msg = 'Area-52 is online'
+    #     else:
+    #         status_msg = 'Area-52 is offline'
 
     if guild.me.activity is None:
         activity = discord.CustomActivity(name=status_msg)
