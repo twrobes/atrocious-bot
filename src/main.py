@@ -10,11 +10,9 @@ from discord.ext import commands, tasks
 
 from cogs.attendance import Attendance
 from env import BOT_TOKEN, POSTGRESQL_SECRET, ATROCIOUS_ATTENDANCE_CHANNEL_ID, ATROCIOUS_GENERAL_CHANNEL_ID
-from services.wow_server_status import update_area_52_server_status
+from services.wow_server_status import get_area_52_server_status_via_api, get_area_52_server_status_via_webpage
 
 DATE_FORMAT = '%Y-%m-%d'
-DOWN = 'DOWN'
-UP = 'UP'
 
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
 discord.utils.setup_logging(handler=handler, level=logging.DEBUG)
@@ -55,7 +53,8 @@ async def on_message(message):
 
 @tasks.loop(minutes=1)
 async def update_bot_status():
-    server_status = await update_area_52_server_status()
+    await get_area_52_server_status_via_webpage()
+    server_status = await get_area_52_server_status_via_api()
     guild = bot.get_guild(699611111066042409)
 
     channel_to_msg = bot.get_channel(ATROCIOUS_GENERAL_CHANNEL_ID)
@@ -63,10 +62,18 @@ async def update_bot_status():
     # raider_role_id = 699622512174301266
     # trial_role_id = 699667525964660826
 
-    if server_status == UP:
+    if server_status:
         status_msg = 'Area-52 is online'
     else:
         status_msg = 'Area-52 is offline'
+
+    is_online = await get_area_52_server_status_via_webpage()
+
+    if is_online != 0:
+        if is_online:
+            status_msg = 'Area-52 is online'
+        else:
+            status_msg = 'Area-52 is offline'
 
     if guild.me.activity is None:
         activity = discord.CustomActivity(name=status_msg)

@@ -1,8 +1,6 @@
 import asyncio
-import functools
 import io
 import os
-import time
 
 import discord
 from discord import app_commands
