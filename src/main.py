@@ -48,12 +48,16 @@ async def on_message(message):
     if 'bruh' in message.content.lower():
         await message.channel.send('bruh')
 
+    if 'scorpion' in message.content.lower():
+        await message.channel.send("Have you heard of the hit T.V. series that aired in 2014 called Scorpion? It's was a hit Workplace Drama starring Elyes Gabel,"
+                                   " Katherine McPhee, and Eddie Kaye Thomas.\nhttps://www.imdb.com/title/tt3514324/")
+
     await bot.process_commands(message)
 
 
 @tasks.loop(minutes=1)
 async def update_bot_status():
-    await get_area_52_server_status_via_webpage()
+    # await get_area_52_server_status_via_webpage()
     server_status = await get_area_52_server_status_via_api()
     guild = bot.get_guild(699611111066042409)
 
