@@ -49,7 +49,7 @@ async def on_message(message):
         await message.channel.send('bruh')
 
     if 'scorpion' in message.content.lower():
-        await message.channel.send("Have you heard of the hit T.V. series that aired in 2014 called Scorpion? It's was a hit Workplace Drama starring Elyes Gabel,"
+        await message.channel.send("Have you heard of the hit T.V. series that aired in 2014 called Scorpion? It was a hit Workplace Drama starring Elyes Gabel,"
                                    " Katherine McPhee, and Eddie Kaye Thomas.\nhttps://www.imdb.com/title/tt3514324/")
 
     await bot.process_commands(message)
@@ -117,8 +117,18 @@ async def remove_past_absences():
     )
     current_date = datetime.datetime.now()
 
+    # Deletes old records from attendance table
     try:
         delete_record_query = """DELETE FROM attendance WHERE absence_date < ($1)"""
+        await conn.execute(delete_record_query, current_date)
+        logging.info('Removed past absence records successfully')
+    except (Exception, asyncpg.PostgresError) as e:
+        logging.error(e)
+        await conn.close()
+
+    # Deletes old records from vacation table
+    try:
+        delete_record_query = """DELETE FROM vacation WHERE end_date < ($1)"""
         await conn.execute(delete_record_query, current_date)
         logging.info('Removed past absence records successfully')
     except (Exception, asyncpg.PostgresError) as e:
