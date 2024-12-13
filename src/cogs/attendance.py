@@ -31,7 +31,7 @@ class Attendance(commands.GroupCog, name='attendance'):
         name='add',
         description='Add a date that you will be absent. Ex: month=4 day=20'
     )
-    async def add_absence(self, interaction: discord.Interaction, month: int, day: int, user: discord.Member = None):
+    async def add_absence(self, interaction: discord.Interaction, year: int, month: int, day: int, user: discord.Member = None):
         is_officer = False
         user_id = interaction.user.id
 
@@ -46,7 +46,6 @@ class Attendance(commands.GroupCog, name='attendance'):
             else:
                 user_id = user.id
 
-        year = datetime.now().year
         error_string = Attendance.validate_date(month, day, year)
 
         if error_string:
@@ -93,7 +92,7 @@ class Attendance(commands.GroupCog, name='attendance'):
         name='remove',
         description='Remove a date that you previously added as an absence. Ex: month=6 day=9'
     )
-    async def remove_absence(self, interaction: discord.Interaction, month: int, day: int, user: discord.Member = None):
+    async def remove_absence(self, interaction: discord.Interaction, year: int, month: int, day: int, user: discord.Member = None):
         is_officer = False
         user_id = interaction.user.id
 
@@ -109,7 +108,6 @@ class Attendance(commands.GroupCog, name='attendance'):
             else:
                 user_id = user.id
 
-        year = datetime.now().year
         error_string = Attendance.validate_date(month, day, year)
 
         if error_string:
@@ -366,7 +364,7 @@ class Attendance(commands.GroupCog, name='attendance'):
         if year < datetime.now().year:
             return f'{year} occurred in the past. Please input a current or future date.'
         elif year > datetime.now().year + 1:
-            return f'{year} is too far in the future, please input the current year or next year.'
+            return f'{year} is too far in the future, please input {datetime.now().year} or {datetime.now().year + 1}.'
 
         if month < 1 or month > 12:
             return 'Month must be between 1-12.'
