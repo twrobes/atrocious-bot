@@ -49,6 +49,14 @@ async def on_message(message):
     if 'bruh' in message.content.lower():
         await message.channel.send('bruh')
 
+    if bot.user in message.mentions:
+        if 'hi' in message.content.lower() or 'hello' in message.content.lower() or 'hey' in message.content.lower():
+            await message.channel.send('<a:hiii:1325574390431223839>')
+        elif 'meowdy' in message.content.lower():
+            await message.channel.send('<a:meowdy:1325576796497772616>')
+        else:
+            await message.channel.send('<:stare:1270932409428344893>')
+
     if 'scorpion' in message.content.lower():
         await message.channel.send("Have you heard of the hit T.V. series that aired in 2014 called Scorpion? It was a hit Workplace Drama starring Elyes Gabel,"
                                    " Katherine McPhee, and Eddie Kaye Thomas.\nhttps://www.imdb.com/title/tt3514324/")
