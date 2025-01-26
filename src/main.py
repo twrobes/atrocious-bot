@@ -10,9 +10,12 @@ from discord.ext import commands, tasks
 
 from cogs.attendance import Attendance
 from env import BOT_TOKEN, POSTGRESQL_SECRET, ATROCIOUS_ATTENDANCE_CHANNEL_ID, ATROCIOUS_GENERAL_CHANNEL_ID
-from services.wow_server_status import get_area_52_server_status_via_api, get_area_52_server_status_via_webpage
+from services.race_to_world_first_service import retrieve_race_update
+from services.wow_server_status_service import get_area_52_server_status_via_api, get_area_52_server_status_via_webpage
 
+ATROCIOUS_SERVER_ID = 699611111066042409
 DATE_FORMAT = '%Y-%m-%d'
+RWF_CHANNEL_ID = 1332825068601868380
 
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
 discord.utils.setup_logging(handler=handler, level=logging.DEBUG)
@@ -26,9 +29,10 @@ bot = commands.Bot(command_prefix='!', intents=intents, application_id='12285621
 @bot.event
 async def on_ready():
     print(f'We have logged in as {bot.user}')
-    update_bot_status.start()
     check_and_update_bot_attendance_msg.start()
     remove_past_absences.start()
+    rwf_tracker.start()
+    update_bot_status.start()
 
 
 async def load():
@@ -55,11 +59,17 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
+@tasks.loop(seconds=5)
+async def rwf_tracker():
+    rwf_channel = bot.get_channel(RWF_CHANNEL_ID)
+    await retrieve_race_update(rwf_channel)
+
+
 @tasks.loop(minutes=1)
 async def update_bot_status():
     # await get_area_52_server_status_via_webpage()
     server_status = await get_area_52_server_status_via_api()
-    guild = bot.get_guild(699611111066042409)
+    guild = bot.get_guild(ATROCIOUS_SERVER_ID)
 
     channel_to_msg = bot.get_channel(ATROCIOUS_GENERAL_CHANNEL_ID)
     # TODO: Bring back for opt-in roles
