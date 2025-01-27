@@ -26,6 +26,13 @@ class Raiderio(commands.Cog):
         print('Raiderio cog loaded.')
 
     @app_commands.command(
+        name='raiderio',
+        description="Links the guild's raider.io page."
+    )
+    async def raider_io(self, interaction: discord.Interaction):
+        await interaction.response.send_message('https://raider.io/guilds/us/area-52/Atrocious')
+
+    @app_commands.command(
         name='prog',
         description='Shows the progress of the guild for the current raid tier.'
     )
