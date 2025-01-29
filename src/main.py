@@ -44,9 +44,6 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.author.id == JEVAN_ID:
-        await message.add_reaction("👎")
-
     if 'o7' in message.content.lower():
         await message.channel.send('o7')
 
